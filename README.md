@@ -2,7 +2,7 @@
 
 **Une interface OpenAI-compatible. Onze fournisseurs LLM gratuits. ~1B+ tokens par mois.**
 
-Interface d'administration React + Vite pour FreeLLMAPI, connectée à ton backend DryApi déployé sur Render.
+Interface d'administration React + Vite pour FreeLLMAPI, à connecter à ton backend.
 
 ## À propos du projet
 
@@ -19,15 +19,11 @@ FreeLLMAPI agrège les tiers gratuits de Google, Groq, Cerebras, SambaNova, NVID
 
 ## Configuration
 
-### Backend
-Ce frontend est connecté à ton backend DryApi :
-- **URL**: `https://dryapi.onrender.com`
-
 ### Variables d'environnement
 
 Crée un fichier `.env` à la racine (ou configure-le sur Netlify) :
 ```env
-VITE_API_URL=https://dryapi.onrender.com
+VITE_API_URL=<URL_DE_TON_BACKEND>
 ```
 
 ## Développement local
@@ -67,11 +63,11 @@ git push -u origin main
     - **Publish directory**: `client/dist`
 5.  **IMPORTANT**: Ajoute une variable d'environnement dans Netlify :
     - Dans les **Settings** du site → **Environment variables**
-    - Ajoute : `VITE_API_URL` avec la valeur `https://dryapi.onrender.com`
+    - Ajoute : `VITE_API_URL` avec la valeur de ton backend
 6.  Clique sur **Deploy site** !
 
 ### Étape 3 : Configurer les CORS sur le backend
-N'oublie pas d'ajouter l'URL de ton frontend Netlify dans les origines CORS autorisées de ton backend DryApi sur Render !
+N'oublie pas d'ajouter l'URL de ton frontend Netlify dans les origines CORS autorisées de ton backend !
 
 ## Build pour la production
 
