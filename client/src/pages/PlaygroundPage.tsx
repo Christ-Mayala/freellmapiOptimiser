@@ -188,40 +188,34 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
 });
 
 const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
-  if (msg.role === 'assistant') {
-    const rawContent = typeof msg.content === 'string' ? msg.content : ''
-    const processedContent = preprocessMarkdown(rawContent)
-    return (
-      <div className="markdown-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
-          components={{
-            pre: ({ children }) => <div className="markdown-pre-wrapper">{children}</div>,
-            code(props) {
-              const { children, className } = props
-              const match = /language-(\w+)/.exec(className || '')
-              const isInline = !match && !String(children).includes('\n')
-              if (isInline) {
-                return (
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-xs text-primary font-mono border">
-                    {children}
-                  </code>
-                )
-              }
-              return <CodeBlock className={className}>{children}</CodeBlock>
-            }
-          }}
-        >
-          {processedContent}
-        </ReactMarkdown>
-      </div>
-    )
-  }
-
   const renderPart = (part: any, idx: number) => {
     if (part.type === 'text') {
-      return <div key={idx} className="whitespace-pre-wrap">{part.text}</div>
+      return (
+        <div key={idx}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+              pre: ({ children }) => <div className="markdown-pre-wrapper">{children}</div>,
+              code(props) {
+                const { children, className } = props
+                const match = /language-(\w+)/.exec(className || '')
+                const isInline = !match && !String(children).includes('\n')
+                if (isInline) {
+                  return (
+                    <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs text-primary font-mono border border-border/20">
+                      {children}
+                    </code>
+                  )
+                }
+                return <CodeBlock className={className}>{children}</CodeBlock>
+              }
+            }}
+          >
+            {part.text}
+          </ReactMarkdown>
+        </div>
+      )
     }
     if (part.type === 'image_url') {
       return (
@@ -240,6 +234,9 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
       </div>
     )
   }
+
+  const rawContent = typeof msg.content === 'string' ? msg.content : ''
+  const processedContent = preprocessMarkdown(rawContent)
 
   return (
     <div className="space-y-2">
@@ -261,7 +258,30 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
           ))}
         </div>
       )}
-      <div className="whitespace-pre-wrap">{typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}</div>
+      <div className="markdown-content">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            pre: ({ children }) => <div className="markdown-pre-wrapper">{children}</div>,
+            code(props) {
+              const { children, className } = props
+              const match = /language-(\w+)/.exec(className || '')
+              const isInline = !match && !String(children).includes('\n')
+              if (isInline) {
+                return (
+                  <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs text-primary font-mono border border-border/20">
+                    {children}
+                  </code>
+                )
+              }
+              return <CodeBlock className={className}>{children}</CodeBlock>
+            }
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
     </div>
   )
 });
