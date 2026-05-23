@@ -8,7 +8,7 @@ import { apiFetch, buildApiUrl } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Paperclip, Send, X, Copy, Check, Sparkles, Pencil, ChevronUp, ChevronDown } from 'lucide-react'
-import type { Conversation } from '../../../shared/types'
+import type { Conversation } from '../types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -93,10 +93,10 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
       console.log('Rendering Mermaid diagram:', diagram);
       
       mermaid.render('mermaid-' + Math.random().toString(36).substr(2, 9), diagram)
-        .then(({ svg }) => {
-          console.log('Mermaid SVG generated:', svg.length);
+        .then((result: { svg: string }) => {
+          console.log('Mermaid SVG generated:', result.svg.length);
           if (isMounted && mermaidRef.current) {
-            mermaidRef.current.innerHTML = svg;
+            mermaidRef.current.innerHTML = result.svg;
           }
         })
         .catch((err: any) => {
