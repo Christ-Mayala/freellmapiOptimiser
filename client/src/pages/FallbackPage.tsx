@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/page-header'
 
 interface FallbackEntry {
-  modelDbId: number
+  modelDbId: string
   priority: number
   effectivePriority: number
   penalty: number
@@ -39,6 +39,53 @@ interface FallbackEntry {
   rpdLimit: number | null
   monthlyTokenBudget: string
   keyCount: number
+}
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function normalizeFallbackEntries(data: unknown): FallbackEntry[] {
+  if (!Array.isArray(data)) return []
+
+  const seen = new Set<string>()
+  const normalized: FallbackEntry[] = []
+
+  for (const raw of data) {
+    const entry = (raw ?? {}) as Partial<FallbackEntry> & { modelDbId?: unknown }
+    const modelDbId = String(entry.modelDbId ?? '').trim()
+    if (!modelDbId || seen.has(modelDbId)) continue
+    seen.add(modelDbId)
+
+    const priority = toFiniteNumber(entry.priority, normalized.length + 1)
+    normalized.push({
+      modelDbId,
+      priority,
+      effectivePriority: toFiniteNumber(entry.effectivePriority, priority),
+      penalty: toFiniteNumber(entry.penalty, 0),
+      rateLimitHits: toFiniteNumber(entry.rateLimitHits, 0),
+      enabled: entry.enabled === true,
+      platform: String(entry.platform ?? ''),
+      modelId: String(entry.modelId ?? ''),
+      displayName: String(entry.displayName ?? ''),
+      intelligenceRank: toFiniteNumber(entry.intelligenceRank, 0),
+      speedRank: toFiniteNumber(entry.speedRank, 0),
+      sizeLabel: String(entry.sizeLabel ?? ''),
+      rpmLimit: toNullableNumber(entry.rpmLimit),
+      rpdLimit: toNullableNumber(entry.rpdLimit),
+      monthlyTokenBudget: String(entry.monthlyTokenBudget ?? '0'),
+      keyCount: toFiniteNumber(entry.keyCount, 0),
+    })
+  }
+
+  return normalized.sort((a, b) => a.priority - b.priority)
 }
 
 function formatTokens(n: number): string {
@@ -89,11 +136,11 @@ function TokenUsageBar({ data }: { data: TokenUsageData }) {
   return (
     <section className="rounded-lg border bg-card p-5">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-sm font-medium">Monthly token budget</h2>
+        <h2 className="text-sm font-medium">Budget de jetons mensuel</h2>
         <span className="text-xs text-muted-foreground tabular-nums">
-          <span className="text-foreground font-medium">{formatTokens(remaining)}</span> remaining
+          <span className="text-foreground font-medium">{formatTokens(remaining)}</span> restants
           <span className="mx-1.5">·</span>
-          {remainingPct}% of {formatTokens(totalBudget)}
+          {remainingPct}% de {formatTokens(totalBudget)}
         </span>
       </div>
 
@@ -110,7 +157,7 @@ function TokenUsageBar({ data }: { data: TokenUsageData }) {
         ))}
         {totalUsed > 0 && (
           <div
-            title={`Used — ${formatTokens(totalUsed)}`}
+            title={`Utilisés — ${formatTokens(totalUsed)}`}
             className="bg-muted-foreground/30"
             style={{ width: `${usedPct}%` }}
           />
@@ -134,15 +181,17 @@ function TokenUsageBar({ data }: { data: TokenUsageData }) {
   )
 }
 
+interface SortableModelRowProps {
+  entry: FallbackEntry
+  index: number
+  onToggle: (modelDbId: string, enabled: boolean) => void
+}
+
 function SortableModelRow({
   entry,
   index,
   onToggle,
-}: {
-  entry: FallbackEntry
-  index: number
-  onToggle: (modelDbId: number, enabled: boolean) => void
-}) {
+}: SortableModelRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.modelDbId,
   })
@@ -162,7 +211,7 @@ function SortableModelRow({
         {...attributes}
         {...listeners}
         className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground transition-colors"
-        aria-label="Drag to reorder"
+        aria-label="Glisser pour réorganiser"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
@@ -177,16 +226,16 @@ function SortableModelRow({
           <span className="text-xs text-muted-foreground">{entry.platform}</span>
           {entry.penalty > 0 && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
-              −{entry.penalty} penalty
+              −{entry.penalty} pénalité
             </span>
           )}
         </div>
         <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground tabular-nums">
           <span>Intel #{entry.intelligenceRank}</span>
-          <span>Speed #{entry.speedRank}</span>
+          <span>Vitesse #{entry.speedRank}</span>
           {entry.rpmLimit && <span>{entry.rpmLimit} rpm</span>}
           {entry.rpdLimit && <span>{entry.rpdLimit} rpd</span>}
-          <span>{entry.monthlyTokenBudget} tok/mo</span>
+          <span>{entry.monthlyTokenBudget} jet/mois</span>
         </div>
       </div>
       <Switch
@@ -203,7 +252,7 @@ export default function FallbackPage() {
 
   const { data: entries = [], isLoading } = useQuery<FallbackEntry[]>({
     queryKey: ['fallback'],
-    queryFn: () => apiFetch('/api/fallback'),
+    queryFn: () => apiFetch('/api/fallback').then(normalizeFallbackEntries),
   })
 
   const { data: tokenUsage } = useQuery<TokenUsageData>({
@@ -212,7 +261,7 @@ export default function FallbackPage() {
   })
 
   const saveMutation = useMutation({
-    mutationFn: (data: { modelDbId: number; priority: number; enabled: boolean }[]) =>
+    mutationFn: (data: { modelDbId: string; priority: number; enabled: boolean }[]) =>
       apiFetch('/api/fallback', { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fallback'] })
@@ -230,8 +279,22 @@ export default function FallbackPage() {
   })
 
   const allEntries = localEntries ?? entries
-  const displayEntries = allEntries.filter(e => e.keyCount > 0)
-  const unconfiguredPlatforms = [...new Set(allEntries.filter(e => e.keyCount === 0).map(e => e.platform))]
+  const displayEntries = allEntries.filter(e => e.modelDbId && e.keyCount > 0 && e.enabled)
+  const hiddenEntries = allEntries.filter(e => !(e.modelDbId && e.keyCount > 0 && e.enabled))
+  const unconfiguredPlatforms = [...new Set(hiddenEntries.filter(e => e.keyCount === 0).map(e => e.platform))]
+
+  // Filtrer le budget de jetons pour n'afficher que les modèles actuellement activés
+  const filteredTokenUsage = tokenUsage ? (() => {
+    const filteredModels = tokenUsage.models.filter(m =>
+      displayEntries.some(e => e.displayName === m.displayName && e.platform === m.platform)
+    )
+    const filteredBudget = filteredModels.reduce((sum, m) => sum + m.budget, 0)
+    return {
+      totalBudget: filteredBudget,
+      totalUsed: Math.min(tokenUsage.totalUsed, filteredBudget),
+      models: filteredModels,
+    }
+  })() : undefined
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -241,18 +304,21 @@ export default function FallbackPage() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = displayEntries.findIndex(e => e.modelDbId === active.id)
-    const newIndex = displayEntries.findIndex(e => e.modelDbId === over.id)
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const oldIndex = displayEntries.findIndex(e => String(e.modelDbId) === activeId)
+    const newIndex = displayEntries.findIndex(e => String(e.modelDbId) === overId)
+    if (oldIndex < 0 || newIndex < 0) return
+
     const reorderedVisible = arrayMove(displayEntries, oldIndex, newIndex)
-    const unconfigured = allEntries.filter(e => e.keyCount === 0)
     const merged = [
       ...reorderedVisible.map((e, i) => ({ ...e, priority: i + 1 })),
-      ...unconfigured.map((e, i) => ({ ...e, priority: reorderedVisible.length + i + 1 })),
+      ...hiddenEntries.map((e, i) => ({ ...e, priority: reorderedVisible.length + i + 1 })),
     ]
     setLocalEntries(merged)
   }
 
-  function handleToggle(modelDbId: number, enabled: boolean) {
+  function handleToggle(modelDbId: string, enabled: boolean) {
     const updated = allEntries.map(e =>
       e.modelDbId === modelDbId ? { ...e, enabled } : e
     )
@@ -275,38 +341,38 @@ export default function FallbackPage() {
   return (
     <div>
       <PageHeader
-        title="Fallback chain"
-        description="Drag to reorder. Requests try models top-to-bottom until one succeeds."
+        title="Chaîne de secours (Fallback)"
+        description="Faites glisser pour réorganiser. Les requêtes essaient les modèles de haut en bas jusqu'à ce que l'un d'eux réussisse."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => sortMutation.mutate('intelligence')} disabled={sortMutation.isPending}>
-              Sort by intelligence
+              Trier par intelligence
             </Button>
             <Button variant="outline" size="sm" onClick={() => sortMutation.mutate('speed')} disabled={sortMutation.isPending}>
-              Sort by speed
+              Trier par vitesse
             </Button>
             <Button variant="outline" size="sm" onClick={() => sortMutation.mutate('budget')} disabled={sortMutation.isPending}>
-              Sort by budget
+              Trier par budget
             </Button>
           </>
         }
       />
 
       <div className="space-y-6">
-        {tokenUsage && tokenUsage.totalBudget > 0 && (
-          <TokenUsageBar data={tokenUsage} />
+        {filteredTokenUsage && filteredTokenUsage.totalBudget > 0 && (
+          <TokenUsageBar data={filteredTokenUsage} />
         )}
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p key="loading" className="text-sm text-muted-foreground">Chargement…</p>
         ) : displayEntries.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center">
+          <div key="empty" className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No models available. Add API keys on the <a href="/keys" className="underline text-foreground">Keys page</a> first.
+              Aucun modèle disponible. Ajoutez des clés API sur la page <a href="/keys" className="underline text-foreground">Clés API</a> d'abord.
             </p>
           </div>
         ) : (
-          <>
+          <div key="fallback-list" className="space-y-6">
             <div className="rounded-lg border divide-y overflow-hidden">
               <DndContext
                 sensors={sensors}
@@ -314,7 +380,7 @@ export default function FallbackPage() {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={displayEntries.map(e => e.modelDbId)}
+                  items={displayEntries.map(e => String(e.modelDbId))}
                   strategy={verticalListSortingStrategy}
                 >
                   {displayEntries.map((entry, index) => (
@@ -332,20 +398,20 @@ export default function FallbackPage() {
             {hasChanges && (
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setLocalEntries(null)}>
-                  Discard
+                  Annuler
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : 'Save order'}
+                  {saveMutation.isPending ? 'Sauvegarde…' : 'Enregistrer l\'ordre'}
                 </Button>
               </div>
             )}
 
             {unconfiguredPlatforms.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                Hidden (no keys): {unconfiguredPlatforms.join(', ')}
+                Cachés (aucune clé) : {unconfiguredPlatforms.join(', ')}
               </p>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

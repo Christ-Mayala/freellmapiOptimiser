@@ -52,22 +52,22 @@ export default function AnalyticsPage() {
 
   const { data: byPlatform = [] } = useQuery({
     queryKey: ['analytics', 'by-platform', range],
-    queryFn: () => apiFetch<any[]>(`/api/analytics/by-platform?range=${range}`),
+    queryFn: () => apiFetch<any[]>(`/api/analytics/by-platform?range=${range}`).then(data => Array.isArray(data) ? data : []),
   })
 
   const { data: timeline = [] } = useQuery({
     queryKey: ['analytics', 'timeline', range],
-    queryFn: () => apiFetch<any[]>(`/api/analytics/timeline?range=${range}`),
+    queryFn: () => apiFetch<any[]>(`/api/analytics/timeline?range=${range}`).then(data => Array.isArray(data) ? data : []),
   })
 
   const { data: byModel = [] } = useQuery({
     queryKey: ['analytics', 'by-model', range],
-    queryFn: () => apiFetch<any[]>(`/api/analytics/by-model?range=${range}`),
+    queryFn: () => apiFetch<any[]>(`/api/analytics/by-model?range=${range}`).then(data => Array.isArray(data) ? data : []),
   })
 
   const { data: errors = [] } = useQuery({
     queryKey: ['analytics', 'errors', range],
-    queryFn: () => apiFetch<any[]>(`/api/analytics/errors?range=${range}`),
+    queryFn: () => apiFetch<any[]>(`/api/analytics/errors?range=${range}`).then(data => Array.isArray(data) ? data : []),
   })
 
   const { data: errorDist } = useQuery({
@@ -78,16 +78,16 @@ export default function AnalyticsPage() {
   return (
     <div>
       <PageHeader
-        title="Analytics"
-        description="Request volume, latency, token usage, and failures."
+        title="Analytique"
+        description="Volume de requêtes, latence, utilisation des jetons et échecs."
         actions={
           <div className="flex gap-1 rounded-md border p-0.5">
-            {(['24h', '7d', '30d'] as TimeRange[]).map(r => (
+            {(['24h', '7j', '30j'] as any[]).map(r => (
               <Button
                 key={r}
-                variant={range === r ? 'secondary' : 'ghost'}
+                variant={range === r.replace('j', 'd') ? 'secondary' : 'ghost'}
                 size="xs"
-                onClick={() => setRange(r)}
+                onClick={() => setRange(r.replace('j', 'd') as TimeRange)}
               >
                 {r}
               </Button>
@@ -99,18 +99,18 @@ export default function AnalyticsPage() {
       <div className="space-y-6">
         {/* Summary stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Stat label="Requests" value={summary?.totalRequests ?? 0} />
-          <Stat label="Success rate" value={`${summary?.successRate ?? 0}%`} />
-          <Stat label="Input tokens" value={formatTokens(summary?.totalInputTokens)} />
-          <Stat label="Output tokens" value={formatTokens(summary?.totalOutputTokens)} />
-          <Stat label="Avg latency" value={`${summary?.avgLatencyMs ?? 0} ms`} />
-          <Stat label="Est. savings" value={`$${summary?.estimatedCostSavings ?? '0.00'}`} />
+          <Stat label="Requêtes" value={summary?.totalRequests ?? 0} />
+          <Stat label="Succès" value={`${summary?.successRate ?? 0}%`} />
+          <Stat label="Jetons Entrants" value={formatTokens(summary?.totalInputTokens)} />
+          <Stat label="Jetons Sortants" value={formatTokens(summary?.totalOutputTokens)} />
+          <Stat label="Latence Moy." value={`${summary?.avgLatencyMs ?? 0} ms`} />
+          <Stat label="Écon. Est." value={`$${summary?.estimatedCostSavings ?? '0.00'}`} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Panel title="Requests by provider">
+          <Panel title="Requêtes par fournisseur">
             {byPlatform.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={byPlatform} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
@@ -124,9 +124,9 @@ export default function AnalyticsPage() {
             )}
           </Panel>
 
-          <Panel title="Avg latency by provider">
+          <Panel title="Latence moyenne par fournisseur">
             {byPlatform.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={byPlatform} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
@@ -141,9 +141,9 @@ export default function AnalyticsPage() {
           </Panel>
 
           <div className="lg:col-span-2">
-            <Panel title="Requests over time">
+            <Panel title="Requêtes dans le temps">
               {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+                <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée</p>
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={timeline} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
@@ -152,8 +152,8 @@ export default function AnalyticsPage() {
                     <YAxis tick={axisStyle} tickLine={false} axisLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 12 }} iconType="line" />
-                    <Line type="monotone" dataKey="successCount" name="Success" stroke={primaryFill} strokeWidth={1.5} dot={false} />
-                    <Line type="monotone" dataKey="failureCount" name="Failures" stroke="var(--destructive)" strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="successCount" name="Succès" stroke={primaryFill} strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="failureCount" name="Échecs" stroke="var(--destructive)" strokeWidth={1.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -161,21 +161,21 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <Panel title="Per-model breakdown">
+            <Panel title="Détails par modèle">
               {byModel.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+                <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée</p>
               ) : (
                 <div className="max-h-[360px] overflow-y-auto -mx-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="pl-4">Model</TableHead>
-                        <TableHead>Provider</TableHead>
-                        <TableHead className="text-right">Requests</TableHead>
-                        <TableHead className="text-right">Success</TableHead>
-                        <TableHead className="text-right">Latency</TableHead>
-                        <TableHead className="text-right">In tokens</TableHead>
-                        <TableHead className="text-right pr-4">Out tokens</TableHead>
+                        <TableHead className="pl-4">Modèle</TableHead>
+                        <TableHead>Fournisseur</TableHead>
+                        <TableHead className="text-right">Requêtes</TableHead>
+                        <TableHead className="text-right">Succès</TableHead>
+                        <TableHead className="text-right">Latence</TableHead>
+                        <TableHead className="text-right">Jetons (in)</TableHead>
+                        <TableHead className="text-right pr-4">Jetons (out)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -197,9 +197,9 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
-          <Panel title="Errors by provider">
+          <Panel title="Erreurs par fournisseur">
             {!errorDist?.byPlatform?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No errors</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune erreur</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={errorDist.byPlatform} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
@@ -213,17 +213,17 @@ export default function AnalyticsPage() {
             )}
           </Panel>
 
-          <Panel title="Recent errors">
+          <Panel title="Erreurs récentes">
             {errors.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No errors</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune erreur</p>
             ) : (
               <div className="max-h-[240px] overflow-y-auto -mx-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="pl-4">Provider</TableHead>
+                      <TableHead className="pl-4">Fournisseur</TableHead>
                       <TableHead>Message</TableHead>
-                      <TableHead className="text-right pr-4">Time</TableHead>
+                      <TableHead className="text-right pr-4">Heure</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
