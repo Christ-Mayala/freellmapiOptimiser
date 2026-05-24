@@ -440,7 +440,7 @@ export default function PlaygroundPage() {
     inputRef.current.style.overflowY = 'hidden'
   }, [])
 
-  const { data: keyData } = useQuery<{ apiKey: string }>({
+  useQuery<{ apiKey: string }>({
     queryKey: ['unified-key'],
     queryFn: () => apiFetch('/api/settings/api-key'),
   })

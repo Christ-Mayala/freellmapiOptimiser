@@ -48,7 +48,7 @@ function AuthenticatedApp() {
 }
 
 function App() {
-  const { user, loading } = useAuth()
+  const { loading } = useAuth()
 
   if (loading) {
     return (

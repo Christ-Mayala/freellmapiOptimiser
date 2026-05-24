@@ -122,7 +122,7 @@ export default function ResetPasswordPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={resetPasswordMutation.isPending || (password && confirmPassword && password !== confirmPassword)}
+              disabled={resetPasswordMutation.isPending || !!(password && confirmPassword && password !== confirmPassword)}
             >
               {resetPasswordMutation.isPending ? 'Réinitialisation en cours…' : 'Réinitialiser le mot de passe'}
             </Button>

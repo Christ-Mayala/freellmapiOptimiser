@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle, User, UserCircle } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle, User } from 'lucide-react'
 import type { Conversation } from '../types'
 
 function getDateGroup(dateStr: string): string {
