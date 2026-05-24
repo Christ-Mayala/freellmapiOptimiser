@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import mermaid from 'mermaid'
 import * as pdfjsLib from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`
@@ -16,6 +15,7 @@ import rehypeRaw from 'rehype-raw'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import mermaid from 'mermaid'
 
 interface FallbackEntry {
   modelDbId: string
@@ -61,6 +61,7 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
   const [copied, setCopied] = useState(false);
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [showDiagram, setShowDiagram] = useState(true);
+  const [svgContent, setSvgContent] = useState<string | null>(null);
   const codeString = String(children).replace(/\n$/, '');
   const match = /language-(\w+)/.exec(className || '');
   const lang = match ? match[1] : '';
@@ -71,9 +72,6 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Mermaid handling
-  const mermaidRef = useRef<HTMLDivElement>(null);
-  
   // Initialize mermaid once with dark theme support
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -89,16 +87,17 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
   useEffect(() => {
     let isMounted = true;
     setMermaidError(null);
+    setSvgContent(null);
     
-    if (lang === 'mermaid' && mermaidRef.current && showDiagram) {
+    if (lang === 'mermaid' && showDiagram) {
       const diagram = codeString.trim();
       console.log('Rendering Mermaid diagram:', diagram);
       
       mermaid.render('mermaid-' + Math.random().toString(36).substr(2, 9), diagram)
         .then((result: { svg: string }) => {
           console.log('Mermaid SVG generated:', result.svg.length);
-          if (isMounted && mermaidRef.current) {
-            mermaidRef.current.innerHTML = result.svg;
+          if (isMounted) {
+            setSvgContent(result.svg);
           }
         })
         .catch((err: any) => {
@@ -144,7 +143,10 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
               </details>
             </div>
           ) : (
-            <div ref={mermaidRef} className="mermaid p-4 flex justify-center" />
+            <div 
+              className="mermaid p-4 flex justify-center" 
+              dangerouslySetInnerHTML={svgContent ? { __html: svgContent } : undefined} 
+            />
           )
         ) : (
           <pre className="overflow-x-auto p-4 bg-[#0d1117] text-sm leading-relaxed font-mono">
@@ -354,13 +356,28 @@ const UserMessageBubble = React.memo(({
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
+  const [isExpanded, setIsExpanded] = useState(false)
   const editRef = useRef<HTMLTextAreaElement>(null)
 
-  const textContent = typeof msg.content === 'string'
+  let textContent = typeof msg.content === 'string'
     ? msg.content
     : Array.isArray(msg.content)
       ? (msg.content.find((p: any) => p.type === 'text')?.text ?? '')
       : ''
+
+  // Hide injected file contents from the UI, as they are already represented by the file attachment icon
+  const fileInjectionIndex = textContent.indexOf('\n\n--- File: ');
+  if (fileInjectionIndex !== -1) {
+    textContent = textContent.substring(0, fileInjectionIndex);
+  }
+      
+  // For display purposes, truncate long user-typed text
+  const CHARACTER_LIMIT = 600;
+  const isLongMessage = textContent.length > CHARACTER_LIMIT || textContent.split('\n').length > 15;
+  
+  const displayContent = (isLongMessage && !isExpanded) 
+    ? textContent.substring(0, CHARACTER_LIMIT) + (textContent.length > CHARACTER_LIMIT ? '...' : '') 
+    : textContent;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(textContent)
@@ -468,7 +485,15 @@ const UserMessageBubble = React.memo(({
             })}
           </div>
         )}
-        {textContent}
+        {displayContent}
+        {isLongMessage && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="block mt-2 text-xs font-semibold underline opacity-80 hover:opacity-100 transition-opacity"
+          >
+            {isExpanded ? 'Voir moins' : 'Voir plus'}
+          </button>
+        )}
       </div>
       {/* Action buttons shown on hover */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pr-1">
@@ -625,7 +650,7 @@ export default function PlaygroundPage() {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
   }
 
-  const convertTextToFile = (text: string) => {
+  const convertTextToFile = useCallback((text: string) => {
     const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 9)
     const fileName = `texte-${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.md`
     return {
@@ -635,7 +660,7 @@ export default function PlaygroundPage() {
       size: new Blob([text]).size,
       text: text
     }
-  }
+  }, [])
 
   // Core send function — can be called with overrides for the edit-message flow
   const sendMessage = async (overrideText?: string, overrideHistory?: ChatMessage[]) => {
@@ -662,7 +687,7 @@ export default function PlaygroundPage() {
       uiContent = fullText;
       apiContent = fullText;
     } else {
-      uiContent = fullText;
+      uiContent = text;
       apiContent = [];
       if (fullText) {
         apiContent.push({ type: 'text', text: fullText });
@@ -850,8 +875,12 @@ export default function PlaygroundPage() {
     const items = e.clipboardData?.items
     if (!items) return
 
+    let hasHandledText = false;
+    let hasImage = false;
+
     for (const item of items) {
       if (item.type.startsWith('image/')) {
+        hasImage = true;
         e.preventDefault()
         const file = item.getAsFile()
         if (file) {
@@ -868,24 +897,23 @@ export default function PlaygroundPage() {
           }
           reader.readAsDataURL(file)
         }
-      } else if (item.type === 'text/plain') {
-        const pastedText = e.clipboardData?.getData('text') || ''
-        if (pastedText.length > LONG_TEXT_THRESHOLD) {
-          e.preventDefault()
-          const newFile = convertTextToFile(pastedText)
-          setUploadedFiles(prev => [...prev, newFile])
-          setInput('')
-        }
+      }
+    }
+    
+    // Process text outside the loop to avoid duplicate handling
+    if (!hasImage && !hasHandledText && e.clipboardData) {
+      const pastedText = e.clipboardData.getData('text') || ''
+      if (pastedText.length > LONG_TEXT_THRESHOLD) {
+        e.preventDefault()
+        const newFile = convertTextToFile(pastedText)
+        setUploadedFiles(prev => [...prev, newFile])
+        setTimeout(() => setInput(''), 0); // ensure input is cleared after native paste might have occurred
+        hasHandledText = true;
       }
     }
   }, [convertTextToFile])
 
-  useEffect(() => {
-    window.addEventListener('paste', handlePaste)
-    return () => {
-      window.removeEventListener('paste', handlePaste)
-    }
-  }, [handlePaste])
+
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background relative overflow-hidden">

@@ -20,18 +20,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      include: [],
+      include: ['pdfjs-dist'],
     },
     assetsInclude: ['**/*.pdf'],
     build: {
       rollupOptions: {
-        output: {
-          manualChunks: (id) => {
-            if (id.includes('mermaid')) {
-              return 'mermaid';
-            }
-          },
-        },
+        output: {},
       },
     },
     server: {
