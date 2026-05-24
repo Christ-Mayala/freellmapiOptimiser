@@ -16,7 +16,7 @@ const technologies = [
   'React / Next.js',
   'Node.js / Express',
   'MongoDB / MySQL',
-  'Flutter',
+  'Flutter / React Native',
   'Firebase',
   'Git / GitHub',
   'Angular',

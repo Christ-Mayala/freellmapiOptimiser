@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import mermaid from 'mermaid'
+import * as pdfjsLib from 'pdfjs-dist'
 
-// Removed top-level ref; will be defined inside component
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, buildApiUrl } from '@/lib/api'
@@ -56,7 +57,7 @@ function preprocessMarkdown(content: string): string {
     .replace(/\*\*\s*([^*]+)\s*\*\*/g, '**$1**')
 }
 
-const CodeBlock = React.memo(({ className, children }: { className?: string; children: React.ReactNode }) => {
+const CodeBlock = React.memo(({ className, children }: { className?: string; children: React.ReactNode }): React.ReactNode => {
   const [copied, setCopied] = useState(false);
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [showDiagram, setShowDiagram] = useState(true);
@@ -188,7 +189,18 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
   );
 });
 
-const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
+const MessageContent = React.memo(({ msg }: { msg: ChatMessage }): React.ReactNode => {
+  const [copied, setCopied] = useState(false)
+  
+  const rawContent = typeof msg.content === 'string' ? msg.content : ''
+  const processedContent = preprocessMarkdown(rawContent)
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rawContent)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const renderPart = (part: any, idx: number) => {
     if (part.type === 'text') {
       return (
@@ -220,8 +232,8 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
     }
     if (part.type === 'image_url') {
       return (
-        <div key={idx} className="mt-2 max-w-sm overflow-hidden rounded-lg border shadow-sm">
-          <img src={part.image_url.url} alt="Image jointe" className="max-h-64 w-auto object-contain" />
+        <div key={idx} className="mt-3 max-w-full overflow-hidden rounded-2xl border border-border/40 shadow-md bg-white dark:bg-card">
+          <img src={part.image_url.url} alt="Image jointe" className="w-full h-auto max-h-[500px] object-contain" />
         </div>
       )
     }
@@ -232,31 +244,67 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
     return (
       <div className="space-y-2">
         {msg.content.map((part, idx) => renderPart(part, idx))}
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-accent/60"
+          >
+            {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+            <span>{copied ? 'Copié' : 'Copier'}</span>
+          </button>
+        </div>
       </div>
     )
   }
 
-  const rawContent = typeof msg.content === 'string' ? msg.content : ''
-  const processedContent = preprocessMarkdown(rawContent)
-
   return (
     <div className="space-y-2">
       {msg.files && msg.files.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {msg.files.map(file => (
-            file.type.startsWith('image/') && 'data' in file && file.data ? (
-              <img
-                key={file.id}
-                src={file.data}
-                alt={file.name}
-                className="max-w-xs rounded-lg shadow-sm border"
-              />
-            ) : (
-              <div key={file.id} className="text-xs opacity-70 flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                📎 {file.name}
-              </div>
-            )
-          ))}
+        <div className="flex flex-col gap-3 mb-3">
+          {msg.files.map(file => {
+            if (!file) return null
+            try {
+              if (file.type?.startsWith('image/') && 'data' in file && file.data) {
+                return (
+                  <div key={file.id || Math.random()} className="w-full overflow-hidden rounded-2xl border border-border/40 shadow-md bg-white dark:bg-card">
+                    <img
+                      src={file.data}
+                      alt={file.name || 'Image'}
+                      className="w-full h-auto max-h-[500px] object-contain"
+                    />
+                  </div>
+                )
+              }
+              return (
+                <div key={file.id || Math.random()} className="w-full flex items-center gap-3 bg-white dark:bg-card border border-border/40 rounded-2xl p-4 shadow-sm">
+                  <div className="flex-shrink-0">
+                    {file.type === 'application/pdf' ? (
+                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{file.name || 'Fichier'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {file.size ? `${(file.size / 1024).toFixed(1)} KB` : ''}
+                    </p>
+                  </div>
+                </div>
+              )
+            } catch (e) {
+              console.error('Erreur affichage fichier:', e)
+              return null
+            }
+          })}
         </div>
       )}
       <div className="markdown-content">
@@ -283,6 +331,15 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }) => {
           {processedContent}
         </ReactMarkdown>
       </div>
+      <div className="flex items-center gap-2 pt-2">
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-accent/60"
+        >
+          {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+          <span>{copied ? 'Copié' : 'Copier'}</span>
+        </button>
+      </div>
     </div>
   )
 });
@@ -293,7 +350,7 @@ const UserMessageBubble = React.memo(({
 }: {
   msg: ChatMessage
   onEdit: (text: string) => void
-}) => {
+}): React.ReactNode => {
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
@@ -360,21 +417,55 @@ const UserMessageBubble = React.memo(({
     <div className="group relative flex flex-col items-end gap-1">
       <div className="max-w-[85%] sm:max-w-[75%] w-full rounded-[1.25rem] rounded-tr-sm px-5 py-3.5 text-[15px] leading-relaxed bg-primary text-primary-foreground font-medium whitespace-pre-wrap">
         {msg.files && msg.files.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {msg.files.map(file => (
-              file.type.startsWith('image/') && 'data' in file && file.data ? (
-                <img
-                  key={file.id}
-                  src={file.data}
-                  alt={file.name}
-                  className="max-w-xs rounded-lg shadow-sm border"
-                />
-              ) : (
-                <div key={file.id} className="text-xs opacity-70 flex items-center gap-1 bg-muted/30 px-2 py-1 rounded">
-                  📎 {file.name}
+          <div className="flex flex-col gap-3 mb-3">
+            {msg.files.map((file, idx) => {
+              if (!file) return null
+              try {
+                if (file.type?.startsWith('image/') && 'data' in file && file.data) {
+                  return (
+                    <div key={file.id} className="w-full overflow-hidden rounded-2xl border border-white/20 shadow-md bg-white/95">
+                      <img
+                        src={file.data}
+                        alt={file.name}
+                        className="w-full h-auto max-h-[500px] object-contain"
+                      />
+                    </div>
+                  )
+                }
+                return (
+                  <div key={file.id} className="group relative w-full flex items-center gap-3 bg-white/95 border border-white/20 rounded-2xl p-4 shadow-sm">
+                  <div className="flex-shrink-0">
+                    {file.type === 'application/pdf' ? (
+                      file.data ? (
+                        <iframe src={file.data} title={file.name} className="w-full h-96 border border-border/40 rounded" />
+                      ) : (
+                        <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                      )
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                    <p className="text-xs text-gray-600">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
                 </div>
-              )
-            ))}
+                )
+              } catch (e) {
+                console.error('Erreur affichage fichier user:', e)
+                return null
+              }
+            })}
           </div>
         )}
         {textContent}
@@ -404,6 +495,7 @@ const UserMessageBubble = React.memo(({
 
 const MIN_TEXTAREA_HEIGHT = 44
 const MAX_TEXTAREA_HEIGHT = 200
+const LONG_TEXT_THRESHOLD = 500
 
 export default function PlaygroundPage() {
   const queryClient = useQueryClient();
@@ -477,14 +569,30 @@ export default function PlaygroundPage() {
 
   const availableModels = fallbackEntries.filter(e => e.keyCount > 0 && e.enabled)
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    files.forEach(file => {
+    
+    for (const file of files) {
       const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 9)
       const textTypes = ['text/plain', 'text/javascript', 'application/javascript', 'text/html', 'text/css', 'application/json', 'text/markdown', 'text/x-python', 'application/x-python', 'text/x-typescript', 'application/x-typescript']
       const isTextFile = textTypes.includes(file.type) || /\.(txt|js|ts|jsx|tsx|py|html|css|json|md|csv|xml|yaml|yml)$/i.test(file.name)
+      const isPDFFile = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 
-      if (isTextFile) {
+      if (isPDFFile) {
+        console.log('📄 Fichier PDF uploadé:', file.name)
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          setUploadedFiles(prev => [...prev, {
+            id: fileId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: event.target?.result as string,
+            text: '[Extraction PDF désactivée - copie-colle le texte du PDF]'
+          }])
+        }
+        reader.readAsDataURL(file)
+      } else if (isTextFile) {
         const reader = new FileReader()
         reader.onload = (event) => {
           setUploadedFiles(prev => [...prev, {
@@ -509,12 +617,24 @@ export default function PlaygroundPage() {
         }
         reader.readAsDataURL(file)
       }
-    })
+    }
     e.target.value = ''
   }
 
   const removeFile = (fileId: string) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+  }
+
+  const convertTextToFile = (text: string) => {
+    const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 9)
+    const fileName = `texte-${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.md`
+    return {
+      id: fileId,
+      name: fileName,
+      type: 'text/markdown',
+      size: new Blob([text]).size,
+      text: text
+    }
   }
 
   // Core send function — can be called with overrides for the edit-message flow
@@ -524,37 +644,40 @@ export default function PlaygroundPage() {
     if (!text && uploadedFiles.length === 0) return
     if (loading) return
 
-    let fullText = text
+    console.log('📤 sendMessage - uploadedFiles:', uploadedFiles)
+    let fullText = text;
     for (const file of uploadedFiles) {
+      console.log('📄 Traitement du fichier:', file.name, 'has text:', !!('text' in file && file.text))
       if ('text' in file && file.text) {
-        fullText += `\n\n--- File: ${file.name} ---\n${file.text}`
+        fullText += `\n\n--- File: ${file.name} ---\n${file.text}`;
       }
     }
+    console.log('📤 fullText:', fullText)
 
     let uiContent: string | any[]
     let apiContent: string | any[]
-    let hasImages = false
+    let hasImages = false;
 
     if (uploadedFiles.length === 0) {
-      uiContent = fullText
-      apiContent = fullText
+      uiContent = fullText;
+      apiContent = fullText;
     } else {
-      uiContent = fullText
-      apiContent = []
+      uiContent = fullText;
+      apiContent = [];
       if (fullText) {
-        apiContent.push({ type: 'text', text: fullText })
+        apiContent.push({ type: 'text', text: fullText });
       }
       for (const file of uploadedFiles) {
         if (file.type.startsWith('image/') && 'data' in file && file.data) {
-          hasImages = true
+          hasImages = true;
           apiContent.push({
             type: 'image_url',
             image_url: { url: file.data }
-          })
+          });
         }
       }
       if (!hasImages) {
-        apiContent = fullText
+        apiContent = fullText;
       }
     }
 
@@ -745,9 +868,17 @@ export default function PlaygroundPage() {
           }
           reader.readAsDataURL(file)
         }
+      } else if (item.type === 'text/plain') {
+        const pastedText = e.clipboardData?.getData('text') || ''
+        if (pastedText.length > LONG_TEXT_THRESHOLD) {
+          e.preventDefault()
+          const newFile = convertTextToFile(pastedText)
+          setUploadedFiles(prev => [...prev, newFile])
+          setInput('')
+        }
       }
     }
-  }, [])
+  }, [convertTextToFile])
 
   useEffect(() => {
     window.addEventListener('paste', handlePaste)
@@ -870,29 +1001,48 @@ export default function PlaygroundPage() {
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-8 pb-5 px-4 md:px-6">
         <div className="max-w-3xl mx-auto relative">
           {uploadedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3 animate-fade-in px-1">
+            <div className="flex flex-wrap gap-3 mb-3 animate-fade-in px-1">
               {uploadedFiles.map(file => (
                 <div
                   key={file.id}
-                  className="flex items-center gap-2 bg-card/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/60 shadow-sm"
+                  className="group flex items-center gap-3 bg-card/95 backdrop-blur-md px-4 py-3 rounded-xl border border-border/60 shadow-sm hover:shadow-md transition-all duration-200"
                 >
-                  {file.type.startsWith('image/') && 'data' in file && file.data ? (
-                    <img
-                      src={file.data}
-                      alt={file.name}
-                      className="w-8 h-8 object-cover rounded-lg border border-border/30"
-                    />
-                  ) : (
-                    <Paperclip className="size-4 text-muted-foreground" />
-                  )}
-                  <span className="text-xs font-medium truncate max-w-[120px]">{file.name}</span>
+                  <div className="flex-shrink-0">
+                    {file.type.startsWith('image/') && 'data' in file && file.data ? (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-border/30">
+                        <img
+                          src={file.data}
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : file.type === 'application/pdf' ? (
+                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted w-5 h-5 rounded-full"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted w-8 h-8 rounded-full"
                     onClick={() => removeFile(file.id)}
                   >
-                    <X className="size-3" />
+                    <X className="size-4" />
                   </Button>
                 </div>
               ))}
@@ -925,6 +1075,7 @@ export default function PlaygroundPage() {
                 resizeTextarea(e.target)
               }}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder="Envoyer un message..."
               rows={1}
               className="flex-1 resize-none bg-transparent border-0 px-3 py-3 mx-1 text-[15px] focus:outline-none focus:ring-0 leading-relaxed placeholder:text-muted-foreground/50"

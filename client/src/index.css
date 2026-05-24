@@ -304,3 +304,10 @@
     border: none;
     color: #e6edf3;
 }
+
+/* Global image styles */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}

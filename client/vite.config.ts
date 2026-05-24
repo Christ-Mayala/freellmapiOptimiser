@@ -20,8 +20,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      include: ['mermaid'],
+      include: [],
     },
+    assetsInclude: ['**/*.pdf'],
     build: {
       rollupOptions: {
         output: {
