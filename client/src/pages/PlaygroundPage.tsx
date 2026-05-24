@@ -871,7 +871,7 @@ export default function PlaygroundPage() {
     }
   }
 
-  const handlePaste = useCallback((e: ClipboardEvent) => {
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items
     if (!items) return
 
