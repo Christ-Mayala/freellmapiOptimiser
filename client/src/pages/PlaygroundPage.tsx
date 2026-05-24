@@ -16,6 +16,7 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import mermaid from 'mermaid'
+import DOMPurify from 'dompurify'
 
 interface FallbackEntry {
   modelDbId: string
@@ -55,6 +56,48 @@ function preprocessMarkdown(content: string): string {
   return content
     .replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
     .replace(/\*\*\s*([^*]+)\s*\*\*/g, '**$1**')
+}
+
+// Fonction pour corriger les paths SVG générés par Mermaid (erreur arc flag)
+function fixSvgPaths(svg: string): string {
+  return svg
+    // Corriger les flags d'arc collés (ex: a2 0 01-2 2 → a 2 0 0 1 -2 2)
+    .replace(/([aAcChHvV])(\d)/g, '$1 $2')
+    .replace(/(\d)([aAcChHvV])/g, '$1 $2')
+    // Corriger les flags d'arc (0 ou 1) collés aux coordonnées
+    .replace(/([0-9])([01])(-?[0-9])/g, '$1 $2 $3')
+    .replace(/([0-9])([01])([aAcChHvV])/g, '$1 $2 $3');
+}
+
+// Composant ErrorBoundary pour le rendu SVG
+class SvgErrorBoundary extends React.Component<
+  { svg: string; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { svg: string; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('SvgErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return (
+      <div 
+        className="mermaid p-4 flex justify-center" 
+        dangerouslySetInnerHTML={{ __html: this.props.svg }} 
+      />
+    );
+  }
 }
 
 const CodeBlock = React.memo(({ className, children }: { className?: string; children: React.ReactNode }): React.ReactNode => {
@@ -97,7 +140,14 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
         .then((result: { svg: string }) => {
           console.log('Mermaid SVG generated:', result.svg.length);
           if (isMounted) {
-            setSvgContent(result.svg);
+            // Corriger le SVG et le nettoyer avec DOMPurify
+            let fixedSvg = fixSvgPaths(result.svg);
+            // Nettoyer le SVG pour éviter les erreurs de rendu
+            fixedSvg = DOMPurify.sanitize(fixedSvg, {
+              USE_PROFILES: { svg: true },
+              FORCE_BODY: false
+            });
+            setSvgContent(fixedSvg);
           }
         })
         .catch((err: any) => {
@@ -142,12 +192,12 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
                 <pre className="mt-2 p-3 bg-[#0d1117] rounded text-xs whitespace-pre-wrap text-muted-foreground">{codeString}</pre>
               </details>
             </div>
-          ) : (
-            <div 
-              className="mermaid p-4 flex justify-center" 
-              dangerouslySetInnerHTML={svgContent ? { __html: svgContent } : undefined} 
+          ) : svgContent ? (
+            <SvgErrorBoundary 
+              svg={svgContent} 
+              fallback={<div className="p-4 text-muted-foreground text-sm">Impossible d'afficher le diagramme (erreur SVG)</div>}
             />
-          )
+          ) : null
         ) : (
           <pre className="overflow-x-auto p-4 bg-[#0d1117] text-sm leading-relaxed font-mono">
             <code className="hljs">{codeString}</code>
@@ -283,13 +333,13 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }): React.ReactNo
                     {file.type === 'application/pdf' ? (
                       <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
                         <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M 9 12 h 6 m -6 4 h 6 m 2 5 H 7 a 2 2 0 0 1 -2 -2 V 5 a 2 2 0 0 1 2 -2 h 5.586 a 1 1 0 0 1 0.707 0.293 l 5.414 5.414 a 1 1 0 0 1 0.293 0.707 V 19 a 2 2 0 0 1 -2 2 z" />
                         </svg>
                       </div>
                     ) : (
                       <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                         <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M 9 12 h 6 m -6 4 h 6 m 2 5 H 7 a 2 2 0 0 1 -2 -2 V 5 a 2 2 0 0 1 2 -2 h 5.586 a 1 1 0 0 1 0.707 0.293 l 5.414 5.414 a 1 1 0 0 1 0.293 0.707 V 19 a 2 2 0 0 1 -2 2 z" />
                         </svg>
                       </div>
                     )}
@@ -310,28 +360,30 @@ const MessageContent = React.memo(({ msg }: { msg: ChatMessage }): React.ReactNo
         </div>
       )}
       <div className="markdown-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
-          components={{
-            pre: ({ children }) => <div className="markdown-pre-wrapper">{children}</div>,
-            code(props) {
-              const { children, className } = props
-              const match = /language-(\w+)/.exec(className || '')
-              const isInline = !match && !String(children).includes('\n')
-              if (isInline) {
-                return (
-                  <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs text-primary font-mono border border-border/20">
-                    {children}
-                  </code>
-                )
+        <ErrorBoundary fallback={<div className="p-4 text-muted-foreground text-sm">Erreur d'affichage du contenu</div>}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+              pre: ({ children }) => <div className="markdown-pre-wrapper">{children}</div>,
+              code(props) {
+                const { children, className } = props
+                const match = /language-(\w+)/.exec(className || '')
+                const isInline = !match && !String(children).includes('\n')
+                if (isInline) {
+                  return (
+                    <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs text-primary font-mono border border-border/20">
+                      {children}
+                    </code>
+                  )
+                }
+                return <CodeBlock className={className}>{children}</CodeBlock>
               }
-              return <CodeBlock className={className}>{children}</CodeBlock>
-            }
-          }}
-        >
-          {processedContent}
-        </ReactMarkdown>
+            }}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        </ErrorBoundary>
       </div>
       <div className="flex items-center gap-2 pt-2">
         <button
@@ -458,7 +510,7 @@ const UserMessageBubble = React.memo(({
                       ) : (
                         <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
                           <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M 9 12 h 6 m -6 4 h 6 m 2 5 H 7 a 2 2 0 0 1 -2 -2 V 5 a 2 2 0 0 1 2 -2 h 5.586 a 1 1 0 0 1 0.707 0.293 l 5.414 5.414 a 1 1 0 0 1 0.293 0.707 V 19 a 2 2 0 0 1 -2 2 z" />
                           </svg>
                         </div>
                       )
@@ -1046,13 +1098,13 @@ export default function PlaygroundPage() {
                     ) : file.type === 'application/pdf' ? (
                       <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
                         <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M 9 12 h 6 m -6 4 h 6 m 2 5 H 7 a 2 2 0 0 1 -2 -2 V 5 a 2 2 0 0 1 2 -2 h 5.586 a 1 1 0 0 1 0.707 0.293 l 5.414 5.414 a 1 1 0 0 1 0.293 0.707 V 19 a 2 2 0 0 1 -2 2 z" />
                         </svg>
                       </div>
                     ) : (
                       <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                         <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M 9 12 h 6 m -6 4 h 6 m 2 5 H 7 a 2 2 0 0 1 -2 -2 V 5 a 2 2 0 0 1 2 -2 h 5.586 a 1 1 0 0 1 0.707 0.293 l 5.414 5.414 a 1 1 0 0 1 0.293 0.707 V 19 a 2 2 0 0 1 -2 2 z" />
                         </svg>
                       </div>
                     )}
