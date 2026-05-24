@@ -907,7 +907,6 @@ export default function PlaygroundPage() {
         e.preventDefault()
         const newFile = convertTextToFile(pastedText)
         setUploadedFiles(prev => [...prev, newFile])
-        setTimeout(() => setInput(''), 0); // ensure input is cleared after native paste might have occurred
         hasHandledText = true;
       }
     }
