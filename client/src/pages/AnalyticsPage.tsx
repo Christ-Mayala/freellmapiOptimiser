@@ -7,7 +7,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PageHeader } from '@/components/page-header'
+import { SectionHeader } from '@/components/page-header'
 
 type TimeRange = '24h' | '7d' | '30d'
 
@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <PageHeader
+      <SectionHeader
         title="Analytique"
         description="Volume de requêtes, latence, utilisation des jetons et échecs."
         actions={

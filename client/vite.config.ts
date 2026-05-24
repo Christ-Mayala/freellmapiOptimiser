@@ -19,6 +19,20 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    optimizeDeps: {
+      include: ['mermaid'],
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes('mermaid')) {
+              return 'mermaid';
+            }
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': `http://localhost:${serverPort}`,

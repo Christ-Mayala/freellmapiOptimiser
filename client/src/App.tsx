@@ -1,10 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Sidebar } from '@/components/Sidebar'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 import KeysPage from '@/pages/KeysPage'
 import PlaygroundPage from '@/pages/PlaygroundPage'
 import FallbackPage from '@/pages/FallbackPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
+import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
+import ProfilePage from '@/pages/ProfilePage'
+import PresentationPage from '@/pages/PresentationPage'
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/ResetPasswordPage'
 
 const queryClient = new QueryClient()
 
@@ -18,24 +26,59 @@ function PageLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
+function AuthenticatedApp() {
+  return (
+    <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden selection:bg-primary/30">
+      <Sidebar />
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+        <Routes>
+          <Route path="/" element={<Navigate to="/c/new" replace />} />
+          <Route path="/c/:id" element={<PlaygroundPage />} />
+          <Route path="/c/new" element={<PlaygroundPage />} />
+          <Route path="/keys" element={<PageLayout><KeysPage /></PageLayout>} />
+          <Route path="/fallback" element={<PageLayout><FallbackPage /></PageLayout>} />
+          <Route path="/analytics" element={<PageLayout><AnalyticsPage /></PageLayout>} />
+          <Route path="/profile" element={<PageLayout><ProfilePage /></PageLayout>} />
+          <Route path="/profile/presentation" element={<PageLayout><PresentationPage /></PageLayout>} />
+          <Route path="*" element={<Navigate to="/c/new" replace />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
 function App() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-background">
+        <div className="flex gap-1.5 items-center h-10 px-1">
+          <span className="size-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+          <span className="size-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+          <span className="size-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden selection:bg-primary/30">
-          <Sidebar />
-          <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-            <Routes>
-              <Route path="/" element={<Navigate to="/c/new" replace />} />
-              <Route path="/c/:id" element={<PlaygroundPage />} />
-              <Route path="/c/new" element={<PlaygroundPage />} />
-              <Route path="/keys" element={<PageLayout><KeysPage /></PageLayout>} />
-              <Route path="/fallback" element={<PageLayout><FallbackPage /></PageLayout>} />
-              <Route path="/analytics" element={<PageLayout><AnalyticsPage /></PageLayout>} />
-              <Route path="*" element={<Navigate to="/c/new" replace />} />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <AuthenticatedApp />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   )

@@ -33,21 +33,53 @@ export function buildApiUrl(path: string): string {
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = new URL(buildApiUrl(path));
   url.searchParams.set('_t', Date.now().toString());
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (options?.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach((entry) => {
+        const [key, value] = entry;
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, options.headers);
+    }
+  }
+
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(url.toString(), {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers,
     cache: 'no-store',
     ...options,
   });
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
-    throw new Error(body.error?.message ?? `HTTP ${res.status}`);
+    const body = await res.json().catch(() => ({ success: false, message: res.statusText }));
+    throw new Error(body.message ?? `HTTP ${res.status}`);
   }
   const data = await res.json();
-  if (Array.isArray(data)) {
-    return data as T;
-  }
   if (data && typeof data === 'object' && data.success === false) {
     throw new Error(data.message);
+  }
+  if (data && typeof data === 'object' && data.success === true) {
+    if (data.data !== undefined) {
+      return data.data as T;
+    }
+    return data as T;
+  }
+  if (Array.isArray(data)) {
+    return data as T;
   }
   return data as T;
 }

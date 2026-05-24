@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export function PageHeader({
+export function SectionHeader({
   title,
   description,
   actions,
@@ -10,7 +10,7 @@ export function PageHeader({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex items-end justify-between gap-6 pb-6 mb-6 border-b">
+    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm flex items-end justify-between gap-6 pb-6 mb-6 border-b pt-4">
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description && (

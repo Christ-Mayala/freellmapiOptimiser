@@ -159,6 +159,7 @@
 .glass-panel {
     background: rgba(var(--card), 0.7);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border);
 }
 
@@ -284,4 +285,22 @@
 
 .markdown-content tr:nth-child(even) {
     background-color: oklch(var(--foreground) / 2%);
+}
+
+/* User message markdown styles */
+.bg-primary .markdown-content code {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--primary-foreground);
+}
+
+.bg-primary .markdown-content pre {
+    background-color: rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.15);
+}
+
+.bg-primary .markdown-content pre code {
+    background-color: transparent;
+    border: none;
+    color: #e6edf3;
 }

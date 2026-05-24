@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle, User, UserCircle } from 'lucide-react'
 import type { Conversation } from '../types'
 
 function getDateGroup(dateStr: string): string {
@@ -195,6 +195,13 @@ export function Sidebar() {
           >
             <BarChart className="size-4.5" />
             <span>Analyses</span>
+          </NavLink>
+          <NavLink 
+            to="/profile" 
+            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
+          >
+            <User className="size-4.5" />
+            <span>Mon Compte</span>
           </NavLink>
           
           <div className="pt-2 mt-2 border-t border-border/40">

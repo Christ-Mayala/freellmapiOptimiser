@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PageHeader } from '@/components/page-header'
+import { SectionHeader } from '@/components/page-header'
 import type { ApiKey, Platform } from '../types'
 
 const PLATFORMS: { value: Platform; label: string }[] = [
@@ -74,7 +74,9 @@ function UnifiedKeySection() {
 
   const apiKey = data?.apiKey ?? ''
   const masked = apiKey ? apiKey.slice(0, 13) + '•'.repeat(32) : '…'
-  const baseUrl = import.meta.env.DEV
+  const baseUrl = import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/v1`
+    : import.meta.env.DEV
     ? `http://${window.location.hostname}:${__SERVER_PORT__}/v1`
     : `${window.location.origin}/v1`
 
@@ -201,7 +203,7 @@ export default function KeysPage() {
 
   return (
     <div>
-      <PageHeader
+      <SectionHeader
         title="Keys"
         description="Provider credentials and the unified API key your apps connect with."
         actions={

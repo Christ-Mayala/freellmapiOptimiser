@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface FallbackEntry {
   modelDbId: string
@@ -357,8 +358,26 @@ const UserMessageBubble = React.memo(({
 
   return (
     <div className="group relative flex flex-col items-end gap-1">
-      <div className="max-w-[85%] sm:max-w-[75%] rounded-[1.25rem] rounded-tr-sm px-5 py-3.5 text-[15px] leading-relaxed bg-primary text-primary-foreground font-medium">
-        <MessageContent msg={msg} />
+      <div className="max-w-[85%] sm:max-w-[75%] w-full rounded-[1.25rem] rounded-tr-sm px-5 py-3.5 text-[15px] leading-relaxed bg-primary text-primary-foreground font-medium whitespace-pre-wrap">
+        {msg.files && msg.files.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {msg.files.map(file => (
+              file.type.startsWith('image/') && 'data' in file && file.data ? (
+                <img
+                  key={file.id}
+                  src={file.data}
+                  alt={file.name}
+                  className="max-w-xs rounded-lg shadow-sm border"
+                />
+              ) : (
+                <div key={file.id} className="text-xs opacity-70 flex items-center gap-1 bg-muted/30 px-2 py-1 rounded">
+                  📎 {file.name}
+                </div>
+              )
+            ))}
+          </div>
+        )}
+        {textContent}
       </div>
       {/* Action buttons shown on hover */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pr-1">
@@ -617,7 +636,8 @@ export default function PlaygroundPage() {
       })
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (keyData?.apiKey) headers['Authorization'] = `Bearer ${keyData.apiKey}`
+      const token = localStorage.getItem('auth_token')
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
       const apiMessages: any[] = []
       apiMessages.push({
@@ -786,7 +806,9 @@ export default function PlaygroundPage() {
                   />
                 ) : (
                   <div className="w-full text-[15px] leading-relaxed text-foreground">
-                    <MessageContent msg={msg} />
+                    <ErrorBoundary fallback={<div className="p-4 bg-destructive/10 text-destructive rounded">Erreur d'affichage du message.</div>}>
+  <MessageContent msg={msg} />
+</ErrorBoundary>
                     {msg.meta && (
                       <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-border/30 flex-wrap text-[11px] text-muted-foreground/70 font-medium tabular-nums tracking-wide">
                         {msg.meta.platform && (

@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { PageHeader } from '@/components/page-header'
+import { SectionHeader } from '@/components/page-header'
 
 interface FallbackEntry {
   modelDbId: string
@@ -340,7 +340,7 @@ export default function FallbackPage() {
 
   return (
     <div>
-      <PageHeader
+      <SectionHeader
         title="Chaîne de secours (Fallback)"
         description="Faites glisser pour réorganiser. Les requêtes essaient les modèles de haut en bas jusqu'à ce que l'un d'eux réussisse."
         actions={
