@@ -105,6 +105,7 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [showDiagram, setShowDiagram] = useState(true);
   const [svgContent, setSvgContent] = useState<string | null>(null);
+  const codeRef = useRef<HTMLElement>(null); // Ajout d'une référence pour le code
   const codeString = String(children).replace(/\n$/, '');
   const match = /language-(\w+)/.exec(className || '');
   const lang = match ? match[1] : '';
@@ -161,6 +162,17 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
     return () => { isMounted = false; };
   }, [codeString, lang, showDiagram]);
 
+  // Highlight code when codeString or lang changes
+  React.useLayoutEffect(() => {
+    if (codeRef.current && codeString.length < 50000) {
+      if (lang && hljs.getLanguage(lang)) {
+        codeRef.current.innerHTML = hljs.highlight(codeString, { language: lang }).value;
+      } else {
+        codeRef.current.innerHTML = hljs.highlightAuto(codeString).value;
+      }
+    }
+  }, [codeString, lang]);
+
   if (lang === 'mermaid') {
     return (
       <div className="relative group my-3 rounded-lg overflow-hidden border border-border/40 shadow-sm">
@@ -207,21 +219,6 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
     );
   }
 
-  let highlightedHtml = codeString;
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      highlightedHtml = hljs.highlight(codeString, { language: lang }).value;
-    } catch (e) {
-      try {
-        highlightedHtml = hljs.highlightAuto(codeString).value;
-      } catch (err) { }
-    }
-  } else {
-    try {
-      highlightedHtml = hljs.highlightAuto(codeString).value;
-    } catch (err) { }
-  }
-
   return (
     <div className="relative group my-3 rounded-lg overflow-hidden border border-border/40 shadow-sm">
       <div className="flex items-center justify-between px-4 py-1.5 bg-[#161b22] border-b border-border/20 text-xs text-muted-foreground font-mono">
@@ -235,7 +232,7 @@ const CodeBlock = React.memo(({ className, children }: { className?: string; chi
         </button>
       </div>
       <pre className="overflow-x-auto p-4 bg-[#0d1117] text-sm leading-relaxed font-mono">
-        <code className="hljs" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+        <code className="hljs" ref={codeRef} />
       </pre>
     </div>
   );
@@ -1026,7 +1023,7 @@ export default function PlaygroundPage() {
                             {msg.meta.platform}
                           </span>
                         )}
-                        {msg.meta.model && <span className="font-mono">· {msg.meta.model}</span>}
+                        {msg.meta.model && <span>· {msg.meta.model}</span>}
                         {msg.meta.latency != null && <span>· {msg.meta.latency} ms</span>}
                         {msg.meta.fallbackAttempts != null && msg.meta.fallbackAttempts > 0 && (
                           <span className="text-amber-500 font-bold">

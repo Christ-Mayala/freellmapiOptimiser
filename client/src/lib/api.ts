@@ -58,6 +58,12 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Ajouter la clé API si disponible
+  const apiKey = localStorage.getItem('api_key');
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+  }
+
   const res = await fetch(url.toString(), {
     headers,
     cache: 'no-store',

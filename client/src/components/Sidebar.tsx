@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle, User } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Key, ShieldAlert, BarChart, Sun, Moon, PanelLeftClose, PanelLeftOpen, MessageCircle, User, ChevronDown, ChevronUp } from 'lucide-react'
 import type { Conversation } from '../types'
 
 function getDateGroup(dateStr: string): string {
@@ -30,6 +30,7 @@ export function Sidebar() {
   const location = useLocation()
   
   const [collapsed, setCollapsed] = useState(false)
+  const [menuExpanded, setMenuExpanded] = useState(false)
   const [dark, setDark] = useState(() =>
     typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
   )
@@ -164,54 +165,64 @@ export function Sidebar() {
         </div>
 
         {/* Menu du bas */}
-        <div className="p-3 border-t border-border/40 space-y-1 bg-[#f9f9f9] dark:bg-[#171717]">
-          <NavLink 
-            to="/c/new" 
-            className={() => {
-              const isConvActive = location.pathname.startsWith('/c/')
-              return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isConvActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`
-            }}
+        <div className="p-3 border-t border-border/40 bg-[#f9f9f9] dark:bg-[#171717]">
+          <button
+            onClick={() => setMenuExpanded(!menuExpanded)}
+            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-accent/40 text-foreground/80 transition-colors mb-1"
+            aria-label="Basculer le menu de navigation"
           >
-            <MessageCircle className="size-4.5" />
-            <span>Conversation</span>
-          </NavLink>
-          <NavLink 
-            to="/keys" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
-          >
-            <Key className="size-4.5" />
-            <span>Clés API</span>
-          </NavLink>
-          <NavLink 
-            to="/fallback" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
-          >
-            <ShieldAlert className="size-4.5" />
-            <span>Chaîne de secours</span>
-          </NavLink>
-          <NavLink 
-            to="/analytics" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
-          >
-            <BarChart className="size-4.5" />
-            <span>Analyses</span>
-          </NavLink>
-          <NavLink 
-            to="/profile" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
-          >
-            <User className="size-4.5" />
-            <span>Mon Compte</span>
-          </NavLink>
-          
-          <div className="pt-2 mt-2 border-t border-border/40">
-            <button 
-              onClick={toggleTheme}
-              className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium hover:bg-accent/40 text-foreground/80 transition-colors"
+            <span>Navigation</span>
+            {menuExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+          <div className={`overflow-hidden transition-all duration-300 ${menuExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'} space-y-1`}>
+            <NavLink
+              to="/c/new"
+              className={() => {
+                const isConvActive = location.pathname.startsWith('/c/')
+                return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isConvActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`
+              }}
             >
-              {dark ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
-              <span>{dark ? 'Mode Clair' : 'Mode Sombre'}</span>
-            </button>
+              <MessageCircle className="size-4.5" />
+              <span>Conversation</span>
+            </NavLink>
+            <NavLink
+              to="/keys"
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
+            >
+              <Key className="size-4.5" />
+              <span>Clés API</span>
+            </NavLink>
+            <NavLink
+              to="/fallback"
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
+            >
+              <ShieldAlert className="size-4.5" />
+              <span>Chaîne de secours</span>
+            </NavLink>
+            <NavLink
+              to="/analytics"
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
+            >
+              <BarChart className="size-4.5" />
+              <span>Analyses</span>
+            </NavLink>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent/80' : 'hover:bg-accent/40 text-foreground/80'}`}
+            >
+              <User className="size-4.5" />
+              <span>Mon Compte</span>
+            </NavLink>
+            
+            <div className="pt-2 mt-2 border-t border-border/40">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium hover:bg-accent/40 text-foreground/80 transition-colors"
+              >
+                {dark ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
+                <span>{dark ? 'Mode Clair' : 'Mode Sombre'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
