@@ -31,6 +31,7 @@ export function Sidebar() {
   
   const [collapsed, setCollapsed] = useState(false)
   const [menuExpanded, setMenuExpanded] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [dark, setDark] = useState(() =>
     typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
   )
@@ -54,6 +55,10 @@ export function Sidebar() {
     queryKey: ['conversations'],
     queryFn: () => apiFetch('/api/conversations').then(data => Array.isArray(data) ? data : []),
   })
+
+  const filteredConversations = conversations.filter(conv =>
+    conv.title.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const createConversation = useMutation({
     mutationFn: (title?: string) => apiFetch<Conversation>('/api/conversations', {
@@ -105,9 +110,20 @@ export function Sidebar() {
           </Button>
         </div>
 
+        {/* Barre de recherche */}
+        <div className="px-3 pb-2">
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-background border border-border/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
         {/* Liste des conversations groupées par date */}
         <div className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
-          {conversations.length === 0 ? (
+          {filteredConversations.length === 0 ? (
             <div key="no-conversations" className="px-2 py-4 text-center">
               <p className="text-xs text-muted-foreground">Aucune conversation</p>
             </div>
@@ -116,7 +132,7 @@ export function Sidebar() {
               {(() => {
                 // Grouper les conversations par date
                 const groups: Record<string, Conversation[]> = {}
-                for (const conv of conversations) {
+                for (const conv of filteredConversations) {
                   const label = getDateGroup(conv.updatedAt || conv.createdAt)
                   if (!groups[label]) groups[label] = []
                   groups[label].push(conv)

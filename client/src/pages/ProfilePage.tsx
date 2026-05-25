@@ -70,30 +70,30 @@ export default function ProfilePage() {
 
       <div className="space-y-6 max-w-2xl mx-auto">
         {/* Bouton Présentation */}
-        <Card>
+        <Card className="glass-panel">
           <CardHeader>
-            <CardTitle>Présentation</CardTitle>
+            <CardTitle className="text-lg">Présentation</CardTitle>
             <CardDescription>
               Découvrez mon parcours et mes compétences.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => navigate('/profile/presentation')}>
+            <Button variant="secondary" className="w-full" onClick={() => navigate('/profile/presentation')}>
               Voir ma présentation
             </Button>
           </CardContent>
         </Card>
 
         {/* Informations personnelles */}
-        <Card>
+        <Card className="glass-panel">
           <CardHeader>
-            <CardTitle>Informations personnelles</CardTitle>
+            <CardTitle className="text-lg">Informations personnelles</CardTitle>
             <CardDescription>
               Mettez à jour vos informations de profil.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Nom complet</Label>
                 <Input
@@ -178,15 +178,15 @@ export default function ProfilePage() {
         </Card>
 
         {/* Sécurité */}
-        <Card>
+        <Card className="glass-panel">
           <CardHeader>
-            <CardTitle>Sécurité</CardTitle>
+            <CardTitle className="text-lg">Sécurité</CardTitle>
             <CardDescription>
               Gérez la sécurité de votre compte.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center p-4 bg-muted/30 rounded-lg border border-border/50">
               <div>
                 <p className="font-medium">Déconnexion</p>
                 <p className="text-sm text-muted-foreground">
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={() => logoutMutation.mutate()}
                 disabled={logoutMutation.isPending}
               >

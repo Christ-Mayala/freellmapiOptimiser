@@ -249,6 +249,7 @@ export default function KeysPage() {
               <Label className="text-xs">{needsAccountId ? 'API token' : 'API key'}</Label>
               <Input
                 type="password"
+                autoComplete="new-password"
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
                 placeholder={needsAccountId ? 'Bearer token' : 'paste key here'}

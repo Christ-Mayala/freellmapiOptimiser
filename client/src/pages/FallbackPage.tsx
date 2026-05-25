@@ -344,7 +344,7 @@ export default function FallbackPage() {
         title="Chaîne de secours (Fallback)"
         description="Faites glisser pour réorganiser. Les requêtes essaient les modèles de haut en bas jusqu'à ce que l'un d'eux réussisse."
         actions={
-          <>
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => sortMutation.mutate('intelligence')} disabled={sortMutation.isPending}>
               Trier par intelligence
             </Button>
@@ -354,7 +354,7 @@ export default function FallbackPage() {
             <Button variant="outline" size="sm" onClick={() => sortMutation.mutate('budget')} disabled={sortMutation.isPending}>
               Trier par budget
             </Button>
-          </>
+          </div>
         }
       />
 

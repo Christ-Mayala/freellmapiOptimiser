@@ -95,6 +95,7 @@
 }
 
 .dark {
+    /* Ajustements pour le mode sombre */
     --background: oklch(0.24 0 0); /* #212121 equivalent */
     --foreground: oklch(0.95 0 0); /* #ececec equivalent */
     --card: oklch(0.28 0 0); /* slightly lighter than bg */

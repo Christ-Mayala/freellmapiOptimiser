@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { PROMPT_TEMPLATES } from '@/lib/prompts'
 import * as pdfjsLib from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`
@@ -11,7 +12,7 @@ import { Paperclip, Send, X, Copy, Check, Sparkles, Pencil, ChevronUp, ChevronDo
 import type { Conversation } from '../types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
+import rehypeRaw from 'rehype-raw' 
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -575,13 +576,14 @@ export default function PlaygroundPage() {
   const queryClient = useQueryClient();
   const { id } = useParams();
   const navigate = useNavigate();
-  const scrollContainerRef = useRef<HTMLDivElement>(null); // New ref for scroll container
-
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string>('auto')
+  const [selectedMode, setSelectedMode] = useState<string | null>(null) // New state for selected mode
+  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null) // New state for selected prompt
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesStartRef = useRef<HTMLDivElement>(null);
@@ -837,9 +839,22 @@ export default function PlaygroundPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const apiMessages: any[] = []
+      let systemContent = 'Tu es un assistant IA. Réponds obligatoirement en français. Formate tes réponses en Markdown valide : toujours un espace après les dièses de titre (ex: ## Titre), utilise **gras** pour les points importants, des listes à puces, des tableaux et des blocs de code avec le langage spécifié quand approprié. Ne mets jamais de ## sans espace après.'
+      
+      if (selectedMode) {
+        systemContent += `\n\nMode actuel : ${selectedMode}. Adapte ton comportement et ton ton en conséquence.`
+      }
+      
+      if (selectedPrompt) {
+        const promptObj = PROMPT_TEMPLATES.find(t => t.title === selectedPrompt)
+        if (promptObj) {
+          systemContent += `\n\nInstruction système supplémentaire : ${promptObj.content}`
+        }
+      }
+
       apiMessages.push({
         role: 'system',
-        content: 'Tu es un assistant IA. Réponds obligatoirement en français. Formate tes réponses en Markdown valide : toujours un espace après les dièses de titre (ex: ## Titre), utilise **gras** pour les points importants, des listes à puces, des tableaux et des blocs de code avec le langage spécifié quand approprié. Ne mets jamais de ## sans espace après.'
+        content: systemContent
       })
 
       for (let i = 0; i < currentMessages.length; i++) {
@@ -1006,7 +1021,6 @@ export default function PlaygroundPage() {
                   <UserMessageBubble
                     msg={msg}
                     onEdit={(newText) => {
-                      // Trim the conversation up to (not including) this user message, then resend
                       const historyBeforeEdit = messages.slice(0, i)
                       sendMessage(newText, historyBeforeEdit)
                     }}
@@ -1014,8 +1028,8 @@ export default function PlaygroundPage() {
                 ) : (
                   <div className="w-full text-[15px] leading-relaxed text-foreground">
                     <ErrorBoundary fallback={<div className="p-4 bg-destructive/10 text-destructive rounded">Erreur d'affichage du message.</div>}>
-  <MessageContent msg={msg} />
-</ErrorBoundary>
+                      <MessageContent msg={msg} />
+                    </ErrorBoundary>
                     {msg.meta && (
                       <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-border/30 flex-wrap text-[11px] text-muted-foreground/70 font-medium tabular-nums tracking-wide">
                         {msg.meta.platform && (
@@ -1047,7 +1061,6 @@ export default function PlaygroundPage() {
             )}
           </div>
         )}
-        {/* Ancre de scroll — en dehors du container de messages pour un scroll fiable */}
         <div ref={messagesEndRef} className="h-px" />
       </div>
 
@@ -1133,15 +1146,71 @@ export default function PlaygroundPage() {
               multiple
               onChange={handleFileUpload}
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-[16px] w-10 h-10 flex-shrink-0 mb-0.5 ml-0.5"
-              onClick={() => document.getElementById('file-upload')?.click()}
-              title="Ajouter un fichier"
-            >
-              <Paperclip className="size-5" />
-            </Button>
+            <div className="flex items-center gap-1 mb-0.5 self-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-[16px] w-8 h-8 flex-shrink-0"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                title="Joindre un fichier"
+              >
+                <Paperclip className="size-4" />
+              </Button>
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`text-muted-foreground hover:text-foreground hover:bg-accent rounded-[16px] h-8 flex items-center gap-1.5 px-2.5 ${selectedMode || selectedPrompt ? 'bg-primary/10 text-primary hover:bg-primary/20' : ''}`}
+                  onClick={() => {
+                    const menu = document.getElementById('prompt-menu');
+                    if (menu) menu.classList.toggle('hidden');
+                  }}
+                  title="Modes et Prompts"
+                >
+                  {selectedMode || selectedPrompt ? <Sparkles className="size-3.5 fill-current" /> : <Sparkles className="size-4" />}
+                  {(selectedMode || selectedPrompt) && (
+                    <span className="text-xs font-bold tracking-tight">
+                      {selectedMode || selectedPrompt}
+                    </span>
+                  )}
+                </Button>
+                <div id="prompt-menu" className="hidden absolute bottom-10 left-0 w-48 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl z-50 p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Modes</div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {['Architect', 'Code', 'Ask', 'Debug'].map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          setSelectedMode(prev => prev === mode ? null : mode);
+                          document.getElementById('prompt-menu')?.classList.add('hidden');
+                          inputRef.current?.focus();
+                        }}
+                        className={`text-left px-2.5 py-1.5 text-xs rounded-xl transition-all ${selectedMode === mode ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-1 border-t border-border/20 pt-2">Prompts</div>
+                  <div className="max-h-48 overflow-y-auto scrollbar-none space-y-1">
+                    {PROMPT_TEMPLATES.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setSelectedPrompt(prev => prev === t.title ? null : t.title);
+                          document.getElementById('prompt-menu')?.classList.add('hidden');
+                          inputRef.current?.focus();
+                        }}
+                        className={`w-full text-left px-2.5 py-2 text-xs rounded-xl transition-all flex flex-col gap-0.5 ${selectedPrompt === t.title ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
+                      >
+                        <span className="font-semibold">{t.title}</span>
+                        <span className="text-[10px] opacity-70 line-clamp-1 font-normal">{t.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <textarea
               ref={inputRef}
@@ -1154,7 +1223,7 @@ export default function PlaygroundPage() {
               onPaste={handlePaste}
               placeholder="Envoyer un message..."
               rows={1}
-              className="flex-1 resize-none bg-transparent border-0 px-3 py-3 mx-1 text-[15px] focus:outline-none focus:ring-0 leading-relaxed placeholder:text-muted-foreground/50"
+              className="flex-1 resize-none bg-transparent border-0 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-0 leading-relaxed placeholder:text-muted-foreground/50"
               style={{ height: MIN_TEXTAREA_HEIGHT + 'px', overflowY: 'hidden', minHeight: MIN_TEXTAREA_HEIGHT + 'px', maxHeight: MAX_TEXTAREA_HEIGHT + 'px' }}
             />
 
@@ -1162,9 +1231,9 @@ export default function PlaygroundPage() {
               onClick={handleSend}
               disabled={loading || (!input.trim() && uploadedFiles.length === 0)}
               size="icon"
-              className="rounded-[16px] w-10 h-10 flex-shrink-0 mb-0.5 mr-0.5 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
+              className="rounded-[16px] w-8 h-8 flex-shrink-0 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 self-center"
             >
-              <Send className="size-4.5 ml-0.5" />
+              <Send className="size-4 ml-0.5" />
             </Button>
           </div>
           <div className="text-center mt-2.5 text-[11px] text-muted-foreground/50 font-medium">
