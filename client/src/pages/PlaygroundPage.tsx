@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, buildApiUrl } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Paperclip, Send, X, Copy, Check, Sparkles, Pencil, ChevronUp, ChevronDown } from 'lucide-react'
+import { Paperclip, Send, X, Copy, Check, Sparkles, Pencil, ChevronUp, ChevronDown, Square } from 'lucide-react'
 import type { Conversation } from '../types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -588,6 +588,7 @@ export default function PlaygroundPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesStartRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
   
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ['conversations'],
@@ -715,6 +716,15 @@ export default function PlaygroundPage() {
 
   // Core send function — can be called with overrides for the edit-message flow
   const sendMessage = async (overrideText?: string, overrideHistory?: ChatMessage[]) => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     const text = (overrideText ?? input).trim()
     const currentHistory = overrideHistory ?? messages
     if (!text && uploadedFiles.length === 0) return
@@ -874,6 +884,7 @@ export default function PlaygroundPage() {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
+        signal: controller.signal
       })
 
       const latency = Date.now() - start
@@ -917,15 +928,30 @@ export default function PlaygroundPage() {
       })
 
     } catch (err: any) {
-      const errorMsg: ChatMessage = { role: 'assistant', content: `Erreur: ${err.message}` }
-      setMessages(prev => [...prev, errorMsg])
+      if (err.name === 'AbortError') {
+        console.log('Requête annulée par l\'utilisateur')
+        const stopMsg: ChatMessage = { role: 'assistant', content: '_Génération arrêtée par l\'utilisateur._' }
+        setMessages(prev => [...prev, stopMsg])
+      } else {
+        const errorMsg: ChatMessage = { role: 'assistant', content: `Erreur: ${err.message}` }
+        setMessages(prev => [...prev, errorMsg])
+      }
     } finally {
       setLoading(false)
+      abortControllerRef.current = null
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }
 
   const handleSend = () => sendMessage()
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setLoading(false)
+    }
+  }
 
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1227,14 +1253,25 @@ export default function PlaygroundPage() {
               style={{ height: MIN_TEXTAREA_HEIGHT + 'px', overflowY: 'hidden', minHeight: MIN_TEXTAREA_HEIGHT + 'px', maxHeight: MAX_TEXTAREA_HEIGHT + 'px' }}
             />
 
-            <Button
-              onClick={handleSend}
-              disabled={loading || (!input.trim() && uploadedFiles.length === 0)}
-              size="icon"
-              className="rounded-[16px] w-8 h-8 flex-shrink-0 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 self-center"
-            >
-              <Send className="size-4 ml-0.5" />
-            </Button>
+            {loading ? (
+              <Button
+                onClick={handleStop}
+                size="icon"
+                className="rounded-[16px] w-8 h-8 flex-shrink-0 shadow-md bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-all duration-200 self-center"
+                title="Arrêter la génération"
+              >
+                <Square className="size-3.5 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSend}
+                disabled={loading || (!input.trim() && uploadedFiles.length === 0)}
+                size="icon"
+                className="rounded-[16px] w-8 h-8 flex-shrink-0 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 self-center"
+              >
+                <Send className="size-4 ml-0.5" />
+              </Button>
+            )}
           </div>
           <div className="text-center mt-2.5 text-[11px] text-muted-foreground/50 font-medium">
             L'IA peut faire des erreurs. Vérifiez toujours les informations importantes.
