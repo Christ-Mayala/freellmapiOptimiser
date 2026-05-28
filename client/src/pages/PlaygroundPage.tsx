@@ -52,23 +52,64 @@ interface ChatMessage {
   }
 }
 
-// Corrige les titres Markdown sans espace et ajoute des retours à la ligne si nécessaire
+// CORRECTION MARKDOWN ULTRA-RENFORCÉE : gère TOUS les cas, y compris tout en une ligne !
 function preprocessMarkdown(content: string): string {
-  return content
-    // 1. Corrige les titres sans espace (##Titre → ## Titre)
-    .replace(/(#{1,6})([^\s#])/g, '$1 $2')
-    // 2. Ajoute un retour à la ligne **avant et après** chaque titre, en séparant du texte précédent
-    .replace(/([^\n])(#{1,6} [^\n]+)/g, '$1\n\n$2\n\n')
-    .replace(/(#{1,6} [^\n]+)([^\n])/g, '$1\n\n$2')
-    // 3. Ajoute un retour à la ligne **avant et après** chaque item de liste
-    .replace(/([^\n])([*+-] [^\n]+)/g, '$1\n$2')
-    .replace(/([*+-] [^\n]+)([^\n])/g, '$1\n$2')
-    // 4. Corrige le gras avec trop d'espaces
-    .replace(/\*\*\s*([^*]+)\s*\*\*/g, '**$1**')
-    // 5. Nettoie les retours à la ligne multiples (max 2)
-    .replace(/\n{3,}/g, '\n\n')
-    // 6. Trim les espaces au début et à la fin
-    .trim();
+  let result = content;
+  
+  // 0. D'abord, normaliser TOUS les retours à la ligne et les caractères de contrôle
+  result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // 1. CORRECTION DES TITRES (le plus important)
+  // a) Ajouter un espace après les dièses si manquant (##Titre → ## Titre)
+  result = result.replace(/(#{1,6})([^\s#])/g, '$1 $2');
+  // b) Ajouter DEUX retours à la ligne AVANT chaque titre (sauf si début de chaîne)
+  result = result.replace(/(^|\n)(#{1,6} [^\n]+)/g, '$1\n$2');
+  // c) Ajouter DEUX retours à la ligne APRÈS chaque titre
+  result = result.replace(/(#{1,6} [^\n]+)($|\n)/g, '$1\n\n');
+
+  // 2. CORRECTION DES LISTES (à puces et numérotées)
+  // a) Ajouter un retour à la ligne avant chaque item de liste (s'il suit du texte)
+  result = result.replace(/([^\n])([*+-] [^\n]+)/g, '$1\n$2');
+  result = result.replace(/([^\n])(\d+\. [^\n]+)/g, '$1\n$2');
+  // b) Ajouter un retour à la ligne après chaque item de liste
+  result = result.replace(/([*+-] [^\n]+)($|\n)/g, '$1\n');
+  result = result.replace(/(\d+\. [^\n]+)($|\n)/g, '$1\n');
+
+  // 3. CORRECTION DES PARAGRAPHES (si tout en une ligne)
+  // Insérer un retour à la ligne entre : point/interrogation/exclamation + espace + majuscule
+  result = result.replace(/([.!?])\s+([A-ZÀ-ÖØ-Þ])/g, '$1\n\n$2');
+
+  // 4. CORRECTION DES BLOCS DE CODE
+  result = result.replace(/([^\n])(```)/g, '$1\n\n$2');
+  result = result.replace(/(```)([^\n])/g, '$1\n$2');
+
+  // 5. CORRECTION DU GRAS/ITALIQUE
+  result = result.replace(/\*\*\s*([^*]+?)\s*\*\*/g, '**$1**');
+  result = result.replace(/\*\s*([^*]+?)\s*\*/g, '*$1*');
+
+  // 6. NETTOYAGE FINAL
+  // a) Retirer les retours à la ligne multiples consécutifs (max 2)
+  result = result.replace(/\n{3,}/g, '\n\n');
+  // b) Retirer les espaces en fin de ligne
+  result = result.replace(/[ \t]+$/gm, '');
+  // c) Trim final
+  result = result.trim();
+
+  // 7. DÉTECTION D'URGENCE : si AUCUN retour à la ligne, on force des ruptures
+  if (!result.includes('\n') && result.length > 200) {
+    // Essayer de couper aux titres
+    let tempResult = result.replace(/(#{1,6} [^\s]+)/g, '\n\n$1\n\n');
+    // Puis couper aux listes
+    tempResult = tempResult.replace(/([*+-] [^\s]+)/g, '\n$1');
+    // Puis couper aux points
+    tempResult = tempResult.replace(/([.!?])\s+/g, '$1\n\n');
+    // Si ça marche, utiliser ça
+    if (tempResult.includes('\n')) {
+      result = tempResult;
+    }
+  }
+
+  return result;
 }
 
 // Fonction pour corriger les paths SVG générés par Mermaid (erreur arc flag)
@@ -861,7 +902,45 @@ export default function PlaygroundPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const apiMessages: any[] = []
-      let systemContent = 'Tu es un assistant IA. Réponds obligatoirement en français.\n\n📌 RÈGLES MARKDOWN IMPÉRATIVES :\n1. **TOUJOURS** utiliser des retours à la ligne (\\n) pour séparer les paragraphes, les titres, les listes\n2. Formatage des titres : `## Titre` (toujours un espace après les dièses)\n3. **TOUJOURS** mettre un retour à la ligne avant et après chaque titre\n4. **TOUJOURS** mettre un retour à la ligne avant et après chaque liste\n5. Utilise **gras** pour les points importants\n6. Utilise des listes à puces (-) ou numérotées (1.)\n7. Utilise des blocs de code avec langage (```python ... ```) quand approprié\n\nEXEMPLE DE RÉPONSE CORRECTE :\n```\n## Titre\n\nParagraphe 1 avec du texte.\n\n* Point important 1\n* Point important 2\n\nParagraphe 2.\n```\n\nNE FAIS JAMAIS DE RÉPONSE TOUT EN UNE SEULE LIGNE !'
+      let systemContent = `Tu es un assistant IA. Réponds obligatoirement en français.
+
+⚠️ RÈGLES DE FORMATTAGE ABSOLUMENT OBLIGATOIRES ET NON-NÉGOCIABLES :
+
+1. **JAMAIS, AU GRAND JAMAIS** répondre en une seule ligne !
+2. **TOUJOURS** utiliser des retours à la ligne (\\n) pour séparer :
+   - Les titres du reste du texte
+   - Les paragraphes entre eux
+   - Les items de liste
+3. Formatage des titres :
+   - # Titre 1
+   - ## Titre 2
+   - ### Titre 3
+   - → TOUJOURS UN ESPACE APRÈS LES DIÈSES !
+   - → TOUJOURS DEUX RETOURS À LA LIGNE AVANT ET APRÈS CHAQUE TITRE !
+4. Listes :
+   - → TOUJOURS UN RETOUR À LA LIGNE AVANT CHAQUE ITEM DE LISTE
+   - → TOUJOURS UN RETOUR À LA LIGNE APRÈS CHAQUE ITEM DE LISTE
+5. Paragraphes :
+   - Séparer chaque paragraphe par DEUX retours à la ligne (\\n\\n)
+6. Blocs de code :
+   - Utiliser \`\`\`langage ... \`\`\` avec un langage spécifié
+   - Retours à la ligne avant et après le bloc de code
+
+✨ EXEMPLE DE RÉPONSE PARFAIT :
+## Titre Principal
+
+Voici un premier paragraphe avec du texte normal.
+
+* Item de liste 1
+* Item de liste 2
+* Item de liste 3
+
+Voici un deuxième paragraphe avec du texte supplémentaire.
+
+### Sous-titre
+
+Dernier paragraphe.
+`;
       
       if (selectedMode) {
         systemContent += `\n\nMode actuel : ${selectedMode}. Adapte ton comportement et ton ton en conséquence.`
