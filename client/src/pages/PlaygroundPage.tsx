@@ -52,11 +52,23 @@ interface ChatMessage {
   }
 }
 
-// Corrige les titres Markdown sans espace (ex: ##Titre → ## Titre)
+// Corrige les titres Markdown sans espace et ajoute des retours à la ligne si nécessaire
 function preprocessMarkdown(content: string): string {
   return content
-    .replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
+    // 1. Corrige les titres sans espace (##Titre → ## Titre)
+    .replace(/(#{1,6})([^\s#])/g, '$1 $2')
+    // 2. Ajoute un retour à la ligne **avant et après** chaque titre, en séparant du texte précédent
+    .replace(/([^\n])(#{1,6} [^\n]+)/g, '$1\n\n$2\n\n')
+    .replace(/(#{1,6} [^\n]+)([^\n])/g, '$1\n\n$2')
+    // 3. Ajoute un retour à la ligne **avant et après** chaque item de liste
+    .replace(/([^\n])([*+-] [^\n]+)/g, '$1\n$2')
+    .replace(/([*+-] [^\n]+)([^\n])/g, '$1\n$2')
+    // 4. Corrige le gras avec trop d'espaces
     .replace(/\*\*\s*([^*]+)\s*\*\*/g, '**$1**')
+    // 5. Nettoie les retours à la ligne multiples (max 2)
+    .replace(/\n{3,}/g, '\n\n')
+    // 6. Trim les espaces au début et à la fin
+    .trim();
 }
 
 // Fonction pour corriger les paths SVG générés par Mermaid (erreur arc flag)
@@ -849,7 +861,7 @@ export default function PlaygroundPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const apiMessages: any[] = []
-      let systemContent = 'Tu es un assistant IA. Réponds obligatoirement en français. Formate tes réponses en Markdown valide : toujours un espace après les dièses de titre (ex: ## Titre), utilise **gras** pour les points importants, des listes à puces, des tableaux et des blocs de code avec le langage spécifié quand approprié. Ne mets jamais de ## sans espace après.'
+      let systemContent = 'Tu es un assistant IA. Réponds obligatoirement en français.\n\n📌 RÈGLES MARKDOWN IMPÉRATIVES :\n1. **TOUJOURS** utiliser des retours à la ligne (\\n) pour séparer les paragraphes, les titres, les listes\n2. Formatage des titres : `## Titre` (toujours un espace après les dièses)\n3. **TOUJOURS** mettre un retour à la ligne avant et après chaque titre\n4. **TOUJOURS** mettre un retour à la ligne avant et après chaque liste\n5. Utilise **gras** pour les points importants\n6. Utilise des listes à puces (-) ou numérotées (1.)\n7. Utilise des blocs de code avec langage (```python ... ```) quand approprié\n\nEXEMPLE DE RÉPONSE CORRECTE :\n```\n## Titre\n\nParagraphe 1 avec du texte.\n\n* Point important 1\n* Point important 2\n\nParagraphe 2.\n```\n\nNE FAIS JAMAIS DE RÉPONSE TOUT EN UNE SEULE LIGNE !'
       
       if (selectedMode) {
         systemContent += `\n\nMode actuel : ${selectedMode}. Adapte ton comportement et ton ton en conséquence.`
@@ -903,6 +915,8 @@ export default function PlaygroundPage() {
 
       const data = await res.json()
       const content = data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2)
+      console.log('🔍 RAW AI RESPONSE:', content)
+      console.log('🔍 PROCESSED CONTENT:', preprocessMarkdown(content))
       const via = data._routed_via ?? (routedVia ? { platform: routedVia.split('/')[0], model: routedVia.split('/').slice(1).join('/') } : undefined)
 
       const assistantMsg: ChatMessage = {
