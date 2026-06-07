@@ -588,7 +588,23 @@ const UserMessageBubble = React.memo(({
             })}
           </div>
         )}
-        {displayContent}
+        <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  p: ({ children }) => <span className="font-medium [&:not(:first-child)]:block">{children}</span>,
+                  pre: ({ children }) => <div className="bg-background/20 rounded-lg p-3 my-2 overflow-x-auto text-sm">{children}</div>,
+                  code: ({ className, children, ...props }) => {
+                    const isInline = !className && typeof children === 'string' && !children.includes('\n');
+                    if (isInline) {
+                      return <code className="bg-background/20 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>;
+                    }
+                    return <code className="block text-xs font-mono whitespace-pre-wrap" {...props}>{children}</code>;
+                  },
+                }}
+              >
+                {displayContent}
+              </ReactMarkdown>
         {isLongMessage && (
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
