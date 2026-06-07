@@ -12,39 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { User } from '@/contexts/AuthContext'
 
 export default function ProfilePage() {
-  const { user, 
-      {/* Preferences */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-          Preferences
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sm">Mode sombre</p>
-              <p className="text-xs text-muted-foreground">Activer le theme sombre</p>
-            </div>
-            <button
-              className={"relative inline-flex h-6 w-11 items-center rounded-full transition-colors " + (darkMode ? "bg-primary" : "bg-muted")}
-              onClick={() => setDarkMode(!darkMode)}>
-              <span className={"inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform " + (darkMode ? "translate-x-[22px]" : "translate-x-0.5")}></span>
-            </button>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sm">Mode economie de tokens</p>
-              <p className="text-xs text-muted-foreground">Compresser le contexte automatiquement</p>
-            </div>
-            <button
-              className={"relative inline-flex h-6 w-11 items-center rounded-full transition-colors " + (tokenSaver ? "bg-primary" : "bg-muted")}
-              onClick={() => setTokenSaver(!tokenSaver)}>
-              <span className={"inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform " + (tokenSaver ? "translate-x-[22px]" : "translate-x-0.5")}></span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-logout, updateUser } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(user?.name || '')
@@ -52,12 +20,26 @@ logout, updateUser } = useAuth()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  // Preferences state
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
+  const [tokenSaver, setTokenSaver] = useState(() => localStorage.getItem('tokenSaver') === 'true')
+
   useEffect(() => {
     if (user) {
       setName(user.name || '')
       setEmail(user.email || '')
     }
   }, [user])
+
+  // Persist preferences
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
+
+  useEffect(() => {
+    localStorage.setItem('tokenSaver', String(tokenSaver))
+  }, [tokenSaver])
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: { name?: string; email?: string; password?: string }) =>
@@ -206,6 +188,46 @@ logout, updateUser } = useAuth()
                 )}
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Préférences */}
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle className="text-lg">Préférences</CardTitle>
+            <CardDescription>
+              Personnalisez votre expérience.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Mode sombre</p>
+                  <p className="text-xs text-muted-foreground">Activer le thème sombre</p>
+                </div>
+                <button
+                  className={"relative inline-flex h-6 w-11 items-center rounded-full transition-colors " + (darkMode ? "bg-primary" : "bg-muted")}
+                  onClick={() => setDarkMode(!darkMode)}
+                  type="button"
+                >
+                  <span className={"inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform " + (darkMode ? "translate-x-[22px]" : "translate-x-0.5")}></span>
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Économie de tokens</p>
+                  <p className="text-xs text-muted-foreground">Compresser le contexte automatiquement</p>
+                </div>
+                <button
+                  className={"relative inline-flex h-6 w-11 items-center rounded-full transition-colors " + (tokenSaver ? "bg-primary" : "bg-muted")}
+                  onClick={() => setTokenSaver(!tokenSaver)}
+                  type="button"
+                >
+                  <span className={"inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform " + (tokenSaver ? "translate-x-[22px]" : "translate-x-0.5")}></span>
+                </button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
