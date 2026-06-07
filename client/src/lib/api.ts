@@ -18,6 +18,19 @@ function normalizeBase(rawBase: string): string {
 
 const BASE = normalizeBase(import.meta.env.VITE_API_URL || '');
 
+// === VERIFICATION ENVIRONNEMENT PRODUCTION ===
+if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+  const rawBase = (import.meta.env.VITE_API_URL || '').trim();
+  if (rawBase.includes('localhost') || rawBase.includes('127.0.0.1')) {
+    console.error(
+      '[FreeLLM] ERREUR: VITE_API_URL pointe vers localhost en production !\n' +
+      'Configurez VITE_API_URL dans les variables d\'environnement Netlify.\n' +
+      'URL actuelle: ' + rawBase
+    );
+  }
+}
+
+
 export function getApiBase(): string {
   return BASE;
 }

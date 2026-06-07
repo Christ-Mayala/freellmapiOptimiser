@@ -1296,7 +1296,7 @@ Dernier paragraphe.
                 <div id="prompt-menu" className="hidden absolute bottom-10 left-0 w-48 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl z-50 p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2">
                   <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Modes</div>
                   <div className="grid grid-cols-2 gap-1">
-                    {['Architect', 'Code', 'Ask', 'Debug'].map(mode => (
+                    {['Architect', 'Code', 'Ask', 'Debug', 'Expert Financier'].map(mode => (
                       <button
                         key={mode}
                         onClick={() => {

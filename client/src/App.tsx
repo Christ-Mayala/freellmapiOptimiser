@@ -48,6 +48,25 @@ function AuthenticatedApp() {
 }
 
 function App() {
+  const [apiConnected, setApiConnected] = useState(true);
+import { buildApiUrl } from '@/lib/api';
+  const [apiChecking, setApiChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkApi = async () => {
+      try {
+        const res = await fetch(buildApiUrl('/health/live'), { method: 'HEAD' });
+        if (!cancelled) setApiConnected(res.ok);
+      } catch {
+        if (!cancelled) setApiConnected(false);
+      }
+      if (!cancelled) setApiChecking(false);
+    };
+    const timer = setTimeout(checkApi, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
   const { loading } = useAuth()
 
   if (loading) {
